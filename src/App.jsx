@@ -4,7 +4,7 @@ const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1YG6DEcrWv9uryyiJyklqo
 
 /**
  * JSDoc typedefs to avoid TS syntax at runtime
- * @typedef {"import"|"queue"|"item"} View
+ * @typedef {"import"|"loading"|"queue"|"item"} View
  * @typedef {"added"|"changed"|"removed"|"orphaned"} ChangeType
  * @typedef {{id:string,type:ChangeType,balloon:number,title:string,detail:string,status?:"pending"|"approved"|"edited"|"dismissed",edit?:{requirement?:string,notes?:string}}} ChangeRecord
  */
@@ -148,7 +148,18 @@ export default function RevReconciliation() {
   function validateFile(kind,f){ const newErrors=[]; if(kind==="revA"||kind==="revB"){ if(!f.name.toLowerCase().endsWith(".pdf")) newErrors.push(`${kind==="revA"?"Rev A":"Rev B"} must be a PDF.`); } else if(kind==="form3"){ const lower=f.name.toLowerCase(); if(!(lower.endsWith(".xlsx")||lower.endsWith(".csv"))) newErrors.push("Form-3 must be .xlsx or .csv."); } setErrors(newErrors); return newErrors.length===0; }
   function onSelect(kind,f){ if(!f) return; if(!validateFile(kind,f)) return; if(kind==="revA") setRevA(f); if(kind==="revB") setRevB(f); if(kind==="form3") setForm3(f); }
 
-  async function handleDetect(){ setDetecting(true); setDetected(false); const start=Date.now(); await new Promise(r=>setTimeout(r, 600)); const durationSec = Math.max(1, Math.round((Date.now()-start)/1000)); setSummary({ added:2, changed:1, removed:0, orphaned:0, confidence:"High", durationSec }); setDetecting(false); setDetected(true); setView("queue"); }
+  async function handleDetect(){
+    setDetecting(true);
+    setDetected(false);
+    setView("loading");
+    const start = Date.now();
+    await new Promise(r=>setTimeout(r, 3500));
+    const durationSec = Math.max(1, Math.round((Date.now()-start)/1000));
+    setSummary({ added:2, changed:1, removed:0, orphaned:0, confidence:"High", durationSec });
+    setDetecting(false);
+    setDetected(true);
+    setView("queue");
+  }
   function approveItem(id){ setChanges(prev=>approveChange(prev,id)); setChangeLog(l=>[...l,{id,action:"approve",at:new Date().toISOString()}]); setView("queue"); }
   function dismissItem(id){ setChanges(prev=>dismissChange(prev,id)); setChangeLog(l=>[...l,{id,action:"dismiss",at:new Date().toISOString()}]); setView("queue"); }
   function saveEdit(id, edit){ setChanges(prev=>saveEditChange(prev,id,edit)); setChangeLog(l=>[...l,{id,action:"edit",at:new Date().toISOString(),payload:edit}]); setView("queue"); }
@@ -165,7 +176,19 @@ export default function RevReconciliation() {
 
   return (
     <ErrorBoundary>
-      {view === "queue" ? (
+      {view === "loading" ? (
+        <div className="min-h-screen bg-neutral-950 text-neutral-100 antialiased flex items-center justify-center">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-10 w-10 animate-spin rounded-full border-2 border-neutral-600 border-t-neutral-100" aria-hidden="true" />
+            <div className="text-sm text-neutral-300 text-center space-y-1">
+              <p>Detecting changes between Rev A and Rev B…</p>
+              <p>This may take a few seconds.</p>
+              <p>Mock analysis in progress.</p>
+              <p>No files are uploaded; this is a demo only.</p>
+            </div>
+          </div>
+        </div>
+      ) : view === "queue" ? (
         <div className="min-h-screen bg-neutral-950 text-neutral-100 antialiased">
           <div className="mx-auto max-w-5xl px-6 py-10">
             <header className="mb-8 flex items-center justify-between">
