@@ -183,8 +183,6 @@ export default function RevReconciliation() {
             <div className="text-sm text-neutral-300 text-center space-y-1">
               <p>Detecting changes between Rev A and Rev B…</p>
               <p>This may take a few seconds.</p>
-              <p>Mock analysis in progress.</p>
-              <p>No files are uploaded; this is a demo only.</p>
             </div>
           </div>
         </div>
@@ -201,7 +199,6 @@ export default function RevReconciliation() {
                 <Chip label="Changed" value={summary.changed} color="sky" />
                 <Chip label="Removed" value={summary.removed} color="rose" />
                 <Chip label="Orphaned" value={summary.orphaned} color="violet" />
-                <Chip label="Confidence" value={summary.confidence} color="neutral" />
                 <button onClick={()=>setView("import")} className="rounded-xl bg-neutral-200 px-4 py-2 text-sm font-medium text-neutral-900 hover:bg-neutral-300">Back</button>
               </div>
             </header>
@@ -254,6 +251,9 @@ export default function RevReconciliation() {
               <div>
                 <h1 className="text-2xl font-semibold tracking-tight">Item Review</h1>
                 <p className="mt-1 text-sm text-neutral-400">{selected.title}</p>
+                <div className="mt-3">
+                  <Chip label="Confidence" value={summary.confidence || "High"} color="neutral" />
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <button onClick={()=>setView("queue")} className="rounded-xl bg-neutral-200 px-4 py-2 text-sm font-medium text-neutral-900 hover:bg-neutral-300">Back to Queue</button>
