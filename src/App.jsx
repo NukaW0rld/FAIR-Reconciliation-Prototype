@@ -1,4 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
+import revA_balloon25 from "../assets/revA_balloon25.png";
+import revB_balloon25 from "../assets/revB_balloon25.png";
+import revA_balloon3132 from "../assets/revA_balloon3132.png";
+import revB_balloon3132 from "../assets/revB_balloon3132.png";
 
 const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1YG6DEcrWv9uryyiJyklqoXSQXms6PKhl/edit?usp=sharing&ouid=101385638677008347573&rtpof=true&sd=true';
 
@@ -6,7 +10,7 @@ const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1YG6DEcrWv9uryyiJyklqo
  * JSDoc typedefs to avoid TS syntax at runtime
  * @typedef {"import"|"loading"|"queue"|"item"} View
  * @typedef {"added"|"changed"|"removed"|"orphaned"} ChangeType
- * @typedef {{id:string,type:ChangeType,balloon:number,title:string,detail:string,status?:"pending"|"approved"|"edited"|"dismissed",edit?:{requirement?:string,notes?:string}}} ChangeRecord
+ * @typedef {{id:string,type:ChangeType,balloon:number,title:string,detail:string,status?:"pending"|"approved"|"edited"|"dismissed",confidence?:string,edit?:{requirement?:string,notes?:string}}} ChangeRecord
  */
 
 class ErrorBoundary extends React.Component { 
@@ -31,9 +35,9 @@ function saveEditChange(arr, id, edit) { return arr.map((c) => (c.id === id ? { 
 
 /** @type {ChangeRecord[]} */
 const INITIAL_CHANGES = [
-  { id: "b31", type: "added", balloon: 31, title: "Balloon 31 – Chamfer 5 mm", detail: "New feature added in Rev B.", status: "pending" },
-  { id: "b32", type: "added", balloon: 32, title: "Balloon 32 – Chamfer 45°", detail: "New chamfer angle added in Rev B.", status: "pending" },
-  { id: "b25", type: "changed", balloon: 25, title: "Balloon 25 – 2×Ø8 THRU ALL → 4×Ø8 THRU ALL", detail: "Hole pattern updated from 2 holes to 4 holes.", status: "pending" },
+  { id: "b31", type: "added",   balloon: 31, title: "Balloon 31 – Chamfer 5 mm",                 detail: "New feature added in Rev B.",                      status: "pending", confidence: "High" },
+  { id: "b32", type: "added",   balloon: 32, title: "Balloon 32 – Chamfer 45°",                  detail: "New chamfer angle added in Rev B.",              status: "pending", confidence: "High" },
+  { id: "b25", type: "changed", balloon: 25, title: "Balloon 25 – 2×Ø8 THRU ALL → 4×Ø8 THRU ALL", detail: "Hole pattern updated from 2 holes to 4 holes.", status: "pending", confidence: "High" },
 ];
 
 (function __selfTest(){
@@ -96,9 +100,9 @@ async function buildDeltaZip({changes, summary, revA, revB, form3}){
   zip.file("form3_delta.csv", toCSV(form3Delta));
 
   const evidence = [
-    { balloon:25, revA:"https://dl.dropboxusercontent.com/scl/fi/x8wpbyk8cc4990iu4n1zf/revA_balloon25.png?rlkey=br0ycktpmnqtra7esvu53ua77&st=6eu8i9j6&raw=1", revB:"https://dl.dropboxusercontent.com/scl/fi/ylfnqstxmovdghetkp974/revB_balloon25.png?rlkey=59l84j2hn8nf0qtodot0txqn3&st=thzzn2c0&raw=1" },
-    { balloon:31, revB:"https://dl.dropboxusercontent.com/scl/fi/vc0xzgw3rgevch12m00sa/revB_balloon3132.png?rlkey=huzidtx1xw278y1dbwdf41ude&st=491b4wwb&raw=1" },
-    { balloon:32, revB:"https://dl.dropboxusercontent.com/scl/fi/vc0xzgw3rgevch12m00sa/revB_balloon3132.png?rlkey=huzidtx1xw278y1dbwdf41ude&st=491b4wwb&raw=1" },
+    { balloon:25, revA:revA_balloon25, revB:revB_balloon25 },
+    { balloon:31, revA:revA_balloon3132, revB:revB_balloon3132 },
+    { balloon:32, revA:revA_balloon3132, revB:revB_balloon3132 },
   ];
   zip.file("evidence.json", JSON.stringify({ images: evidence }, null, 2));
 
@@ -143,7 +147,6 @@ export default function RevReconciliation() {
   const totalPending = changes.filter(c=>!c.status || c.status === "pending").length;
   const readyToPublish = detected && allProvided && changes.length>0 && totalPending===0;
 
-  function toDirect(u){ try{ const url = new URL(u); url.host = "dl.dropboxusercontent.com"; url.searchParams.set("raw","1"); url.searchParams.delete("dl"); return url.toString(); } catch { return u; } }
   function humanSize(bytes){ if(bytes===0) return "0 B"; const k=1024; const sizes=["B","KB","MB","GB"]; const i=Math.floor(Math.log(bytes)/Math.log(k)); return `${(bytes/Math.pow(k,i)).toFixed(1)} ${sizes[i]}`; }
   function validateFile(kind,f){ const newErrors=[]; if(kind==="revA"||kind==="revB"){ if(!f.name.toLowerCase().endsWith(".pdf")) newErrors.push(`${kind==="revA"?"Rev A":"Rev B"} must be a PDF.`); } else if(kind==="form3"){ const lower=f.name.toLowerCase(); if(!(lower.endsWith(".xlsx")||lower.endsWith(".csv"))) newErrors.push("Form-3 must be .xlsx or .csv."); } setErrors(newErrors); return newErrors.length===0; }
   function onSelect(kind,f){ if(!f) return; if(!validateFile(kind,f)) return; if(kind==="revA") setRevA(f); if(kind==="revB") setRevB(f); if(kind==="form3") setForm3(f); }
@@ -217,6 +220,7 @@ export default function RevReconciliation() {
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="text-xs text-neutral-500">Balloon #{c.balloon}</div>
+                      <Chip label="Confidence" value={c.confidence || summary.confidence || "High"} color="neutral" />
                       {c.status && (
                         <span className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wide ${
                           c.status === "approved" ? "bg-emerald-900/40 text-emerald-300 border border-emerald-800" :
@@ -261,14 +265,23 @@ export default function RevReconciliation() {
             </header>
 
             {(()=>{
-              const isChanged = selected.type === "changed" && selected.balloon === 25;
-              const showRevA = isChanged;
-              const leftImg = isChanged
-                ? toDirect("https://www.dropbox.com/scl/fi/x8wpbyk8cc4990iu4n1zf/revA_balloon25.png?rlkey=br0ycktpmnqtra7esvu53ua77&st=6eu8i9j6&dl=0")
-                : toDirect("https://www.dropbox.com/scl/fi/vc0xzgw3rgevch12m00sa/revB_balloon3132.png?rlkey=huzidtx1xw278y1dbwdf41ude&st=491b4wwb&dl=0");
-              const rightImg = isChanged
-                ? toDirect("https://www.dropbox.com/scl/fi/ylfnqstxmovdghetkp974/revB_balloon25.png?rlkey=59l84j2hn8nf0qtodot0txqn3&st=thzzn2c0&dl=0")
-                : null;
+              const isB25 = selected.balloon === 25;
+              const isB31or32 = selected.balloon === 31 || selected.balloon === 32;
+              const showRevA = isB25 || isB31or32;
+
+              let revAImg = null;
+              let revBImg = null;
+
+              if (isB25) {
+                revAImg = revA_balloon25;
+                revBImg = revB_balloon25;
+              } else if (isB31or32) {
+                revAImg = revA_balloon3132;
+                revBImg = revB_balloon3132;
+              }
+
+              const leftImg = showRevA ? revAImg : revBImg;
+              const rightImg = showRevA ? revBImg : null;
 
               return (
                 <>
@@ -397,5 +410,5 @@ function Chip({ label, value, color }){
 
 function SafeImg({ src, alt }){
   if(!src || typeof src !== "string") return <div className="flex h-[420px] items-center justify-center text-xs text-neutral-500">No image</div>;
-  return <img src={src} alt={alt} className="h-full w-full object-contain" crossOrigin="anonymous" referrerPolicy="no-referrer" draggable={false} />;
+  return <img src={src} alt={alt} className="h-full w-full object-contain" draggable={false} />;
 }
