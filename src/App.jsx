@@ -3,6 +3,7 @@ import revA_balloon25 from "../assets/revA_balloon25.png";
 import revB_balloon25 from "../assets/revB_balloon25.png";
 import revA_balloon3132 from "../assets/revA_balloon3132.png";
 import revB_balloon3132 from "../assets/revB_balloon3132.png";
+import revAB_balloon7_false_positive from "../assets/revAB_balloon7_false_positive.png";
 
 const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1YG6DEcrWv9uryyiJyklqoXSQXms6PKhl/edit?usp=sharing&ouid=101385638677008347573&rtpof=true&sd=true';
 
@@ -35,6 +36,15 @@ function saveEditChange(arr, id, edit) { return arr.map((c) => (c.id === id ? { 
 
 /** @type {ChangeRecord[]} */
 const INITIAL_CHANGES = [
+  {
+    id: "b7",
+    type: "changed",
+    balloon: 7,
+    title: "Balloon 7 – Countersink 10 mm at 90°",
+    detail: "Minor rendering differences detected.",
+    status: "pending",
+    confidence: "Low – Minor rendering differences detected",
+  },
   {
     id: "b31",
     type: "added",
@@ -77,10 +87,10 @@ const INITIAL_CHANGES = [
   const sample = JSON.parse(JSON.stringify(INITIAL_CHANGES));
   __devAssert(approveChange(sample,"b31").find(x=>x.id==="b31").status==="approved","approveChange should set approved");
   __devAssert(dismissChange(sample,"b32").find(x=>x.id==="b32").status==="dismissed","dismissChange should set dismissed");
-  const e = saveEditChange(sample,"b25",{requirement:"4× Ø8 THRU ALL",notes:"Updated"});
+  const e = saveEditChange(sample,"b25",{requirement:"4 × Ø8 THRU ALL",notes:"Updated"});
   const eItem = e.find(x=>x.id==="b25");
   __devAssert(eItem.status==="edited","saveEditChange should set edited");
-  __devAssert(eItem.edit && eItem.edit.requirement === "4× Ø8 THRU ALL","saveEditChange should persist edit");
+  __devAssert(eItem.edit && eItem.edit.requirement === "4 × Ø8 THRU ALL","saveEditChange should persist edit");
 })();
 
 // ===== Delta Packet helpers =====
@@ -124,9 +134,10 @@ async function buildDeltaZip({changes, summary, revA, revB, form3}){
   zip.file("form3_delta.csv", toCSV(form3Delta));
 
   const evidence = [
-    { balloon:25, revA:revA_balloon25, revB:revB_balloon25 },
-    { balloon:31, revA:revA_balloon3132, revB:revB_balloon3132 },
-    { balloon:32, revA:revA_balloon3132, revB:revB_balloon3132 },
+    { balloon:7,  revA:revAB_balloon7_false_positive, revB:revAB_balloon7_false_positive },
+    { balloon:25, revA:revA_balloon25,                revB:revB_balloon25 },
+    { balloon:31, revA:revA_balloon3132,              revB:revB_balloon3132 },
+    { balloon:32, revA:revA_balloon3132,              revB:revB_balloon3132 },
   ];
   zip.file("evidence.json", JSON.stringify({ images: evidence }, null, 2));
 
@@ -246,14 +257,8 @@ export default function RevReconciliation() {
                       <div className="text-xs text-neutral-500">Balloon #{c.balloon}</div>
                       {(()=>{
                         const raw = c.confidence || summary.confidence || "High";
-                        const [level, ...rest] = String(raw).split("–");
-                        const reason = rest.join("–").trim();
-                        return (
-                          <>
-                            <Chip label="Confidence" value={level.trim()} color="neutral" />
-                            {reason && <span className="text-[11px] text-neutral-400">{reason}</span>}
-                          </>
-                        );
+                        const [level] = String(raw).split("–");
+                        return <Chip label="Confidence" value={level.trim()} color="neutral" />;
                       })()}
                       {c.status && (
                         <span className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wide ${
@@ -307,14 +312,18 @@ export default function RevReconciliation() {
             </header>
 
             {(()=>{
+              const isB7 = selected.balloon === 7;
               const isB25 = selected.balloon === 25;
               const isB31or32 = selected.balloon === 31 || selected.balloon === 32;
-              const showRevA = isB25 || isB31or32;
+              const showRevA = isB7 || isB25 || isB31or32;
 
               let revAImg = null;
               let revBImg = null;
 
-              if (isB25) {
+              if (isB7) {
+                revAImg = revAB_balloon7_false_positive;
+                revBImg = revAB_balloon7_false_positive;
+              } else if (isB25) {
                 revAImg = revA_balloon25;
                 revBImg = revB_balloon25;
               } else if (isB31or32) {
@@ -405,7 +414,15 @@ function EditorPanel({ selected, onSave, onApprove, onDismiss }){
               value={req}
               onChange={(e)=>setReq(e.target.value)}
               className="w-full rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-600"
-              placeholder={selected.type === "changed" ? "4× Ø8 THRU ALL" : selected.type === "added" ? defaultAddedText : ""}
+              placeholder={
+                selected.balloon === 7
+                  ? "⌵ 10 x 90°"
+                  : selected.type === "changed"
+                    ? "4× Ø8 THRU ALL"
+                    : selected.type === "added"
+                      ? defaultAddedText
+                      : ""
+              }
               disabled={!editMode}
             />
           </div>
@@ -419,7 +436,16 @@ function EditorPanel({ selected, onSave, onApprove, onDismiss }){
         ) : (
           <button className="rounded-xl bg-sky-200 px-4 py-2 text-sm font-medium text-neutral-900 hover:bg-sky-300" onClick={()=>onSave({ requirement:req })}>Save</button>
         )}
-        <button className="rounded-xl bg-neutral-800 px-4 py-2 text-sm font-medium text-neutral-200 hover:bg-neutral-700" onClick={()=>onDismiss()}>Dismiss</button>
+        <button
+          className={`rounded-xl px-4 py-2 text-sm font-medium ${
+            selected.balloon === 7
+              ? "bg-white text-neutral-900 hover:bg-neutral-200"
+              : "bg-neutral-800 text-neutral-200 hover:bg-neutral-700"
+          }`}
+          onClick={()=>onDismiss()}
+        >
+          Dismiss
+        </button>
       </section>
     </>
   );
