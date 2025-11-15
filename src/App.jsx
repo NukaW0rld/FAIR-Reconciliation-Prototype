@@ -254,7 +254,6 @@ export default function RevReconciliation() {
                       ) : null}
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="text-xs text-neutral-500">Balloon #{c.balloon}</div>
                       {(()=>{
                         const raw = c.confidence || summary.confidence || "High";
                         const [level] = String(raw).split("–");
