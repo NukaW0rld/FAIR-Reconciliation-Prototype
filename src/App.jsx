@@ -193,7 +193,7 @@ export default function RevReconciliation() {
     const start = Date.now();
     await new Promise(r=>setTimeout(r, 3500));
     const durationSec = Math.max(1, Math.round((Date.now()-start)/1000));
-    setSummary({ added:2, changed:1, removed:0, orphaned:0, confidence:"High", durationSec });
+    setSummary({ added:2, changed:2, removed:0, orphaned:0, confidence:"High", durationSec });
     setDetecting(false);
     setDetected(true);
     setView("queue");
