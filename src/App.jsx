@@ -35,9 +35,33 @@ function saveEditChange(arr, id, edit) { return arr.map((c) => (c.id === id ? { 
 
 /** @type {ChangeRecord[]} */
 const INITIAL_CHANGES = [
-  { id: "b31", type: "added",   balloon: 31, title: "Balloon 31 – Chamfer 5 mm",                 detail: "New feature added in Rev B.",                      status: "pending", confidence: "High" },
-  { id: "b32", type: "added",   balloon: 32, title: "Balloon 32 – Chamfer 45°",                  detail: "New chamfer angle added in Rev B.",              status: "pending", confidence: "High" },
-  { id: "b25", type: "changed", balloon: 25, title: "Balloon 25 – 2×Ø8 THRU ALL → 4×Ø8 THRU ALL", detail: "Hole pattern updated from 2 holes to 4 holes.", status: "pending", confidence: "High" },
+  {
+    id: "b31",
+    type: "added",
+    balloon: 31,
+    title: "Balloon 31 – Chamfer 5 mm",
+    detail: "New feature added in Rev B.",
+    status: "pending",
+    confidence: "Medium – Change not listed in revision block",
+  },
+  {
+    id: "b32",
+    type: "added",
+    balloon: 32,
+    title: "Balloon 32 – Chamfer 45°",
+    detail: "New chamfer angle added in Rev B.",
+    status: "pending",
+    confidence: "Medium – Change not listed in revision block",
+  },
+  {
+    id: "b25",
+    type: "changed",
+    balloon: 25,
+    title: "Balloon 25 – 2×Ø8 THRU ALL → 4×Ø8 THRU ALL",
+    detail: "Hole pattern updated from 2 holes to 4 holes.",
+    status: "pending",
+    confidence: "High – Dimension & geometry changed",
+  },
 ];
 
 (function __selfTest(){
@@ -220,7 +244,17 @@ export default function RevReconciliation() {
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="text-xs text-neutral-500">Balloon #{c.balloon}</div>
-                      <Chip label="Confidence" value={c.confidence || summary.confidence || "High"} color="neutral" />
+                      {(()=>{
+                        const raw = c.confidence || summary.confidence || "High";
+                        const [level, ...rest] = String(raw).split("–");
+                        const reason = rest.join("–").trim();
+                        return (
+                          <>
+                            <Chip label="Confidence" value={level.trim()} color="neutral" />
+                            {reason && <span className="text-[11px] text-neutral-400">{reason}</span>}
+                          </>
+                        );
+                      })()}
                       {c.status && (
                         <span className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wide ${
                           c.status === "approved" ? "bg-emerald-900/40 text-emerald-300 border border-emerald-800" :
@@ -255,9 +289,17 @@ export default function RevReconciliation() {
               <div>
                 <h1 className="text-2xl font-semibold tracking-tight">Item Review</h1>
                 <p className="mt-1 text-sm text-neutral-400">{selected.title}</p>
-                <div className="mt-3">
-                  <Chip label="Confidence" value={summary.confidence || "High"} color="neutral" />
-                </div>
+                {(()=>{
+                  const raw = selected.confidence || summary.confidence || "High";
+                  const [level, ...rest] = String(raw).split("–");
+                  const reason = rest.join("–").trim();
+                  return (
+                    <div className="mt-3 flex items-center gap-2 text-xs text-neutral-400">
+                      <Chip label="Confidence" value={level.trim()} color="neutral" />
+                      {reason && <span>{reason}</span>}
+                    </div>
+                  );
+                })()}
               </div>
               <div className="flex items-center gap-2">
                 <button onClick={()=>setView("queue")} className="rounded-xl bg-neutral-200 px-4 py-2 text-sm font-medium text-neutral-900 hover:bg-neutral-300">Back to Queue</button>
@@ -351,20 +393,21 @@ export default function RevReconciliation() {
 
 function EditorPanel({ selected, onSave, onApprove, onDismiss }){
   const [req, setReq] = useState(selected.edit?.requirement ?? "");
-  const [notes, setNotes] = useState(selected.edit?.notes ?? "");
   const [editMode, setEditMode] = useState(false);
   const defaultAddedText = selected.type === "added" ? (selected.title.split(" – ")[1] || "") : "";
   return (
     <>
       <section className="mt-6 rounded-2xl border border-neutral-800 bg-neutral-900/30 p-4">
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-3 md:grid-cols-1">
           <div>
             <label className="mb-1 block text-xs text-neutral-400">Proposed requirement</label>
-            <input value={req} onChange={(e)=>setReq(e.target.value)} className="w-full rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-600" placeholder={selected.type === "changed" ? "4× Ø8 THRU ALL" : selected.type === "added" ? defaultAddedText : ""} disabled={!editMode} />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-neutral-400">Notes</label>
-            <input value={notes} onChange={(e)=>setNotes(e.target.value)} className="w-full rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-600" placeholder="Method, sample size, comments" disabled={!editMode} />
+            <input
+              value={req}
+              onChange={(e)=>setReq(e.target.value)}
+              className="w-full rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-600"
+              placeholder={selected.type === "changed" ? "4× Ø8 THRU ALL" : selected.type === "added" ? defaultAddedText : ""}
+              disabled={!editMode}
+            />
           </div>
         </div>
       </section>
@@ -374,7 +417,7 @@ function EditorPanel({ selected, onSave, onApprove, onDismiss }){
         {!editMode ? (
           <button className="rounded-xl bg-neutral-200 px-4 py-2 text-sm font-medium text-neutral-900 hover:bg-neutral-300" onClick={()=>setEditMode(true)}>Edit…</button>
         ) : (
-          <button className="rounded-xl bg-sky-200 px-4 py-2 text-sm font-medium text-neutral-900 hover:bg-sky-300" onClick={()=>onSave({ requirement:req, notes })}>Save</button>
+          <button className="rounded-xl bg-sky-200 px-4 py-2 text-sm font-medium text-neutral-900 hover:bg-sky-300" onClick={()=>onSave({ requirement:req })}>Save</button>
         )}
         <button className="rounded-xl bg-neutral-800 px-4 py-2 text-sm font-medium text-neutral-200 hover:bg-neutral-700" onClick={()=>onDismiss()}>Dismiss</button>
       </section>
